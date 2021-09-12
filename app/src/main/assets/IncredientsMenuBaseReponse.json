@@ -1,0 +1,36 @@
+{ "status":
+{ "success": true, "statusCode": 200, "message": "success" },
+  "data":
+  { "id": 14,
+    "category_id": 14,
+    "title": "Extras",
+    "items": [
+      {
+        "id": 13,
+        "title": "Paneer Cubes",
+        "min_qty": 2,
+        "qty_available": 10
+      },
+      {
+        "id": 14,
+        "title": "Coke Straw",
+        "min_qty": 2,
+        "qty_available": 3
+      },
+      {
+        "id": 15,
+        "title": "Fried Rice",
+        "min_qty": 5,
+        "qty_available": 10
+      },
+      {
+        "id": 16,
+        "title": "Cheese Cups",
+        "min_qty": 2,
+        "qty_available": 1
+      }
+    ],
+    "created_at": "2021-09-12T07:20:00+00Z"
+
+  }
+   }
