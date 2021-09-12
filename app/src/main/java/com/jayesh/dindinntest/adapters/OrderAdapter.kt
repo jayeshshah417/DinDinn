@@ -62,6 +62,7 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
             }else{
                 holder.iv_notify.visibility=View.GONE
             }
+
             val linearLayoutManager: RecyclerView.LayoutManager = LinearLayoutManager(mContext)
             holder.rv_items!!.layoutManager = linearLayoutManager
             var mItems_list: List<Items> = ArrayList<Items>()
@@ -71,45 +72,13 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
             val mItemAdapter = ItemsAdapter(mItems_list)
             holder.rv_items!!.adapter = mItemAdapter
             mItemAdapter!!.notifyDataSetChanged()
-            holder.itemView.setOnClickListener {
-                if (listener != null) {
-                    listener!!.onItemClick(order, map_countertimer)
-                }
-            }
-            //
+
 
             holder.bt_accept.setOnClickListener(View.OnClickListener {
-                val timer_val = map_countertimer!!.get(order.id)
-                timer_val!!.cancel()
-                resetMapTimer()
-                map_accept_expired!!.put(order.id, true)
-                val result_map_accept_expired = map_accept_expired!!.get(order.id)
-                if (result_map_accept_expired != null && result_map_accept_expired) {
-                    var datalist1: MutableList<Orders> = ArrayList<Orders>()
-                    for (order_item in dataList) {
-                        if (order.id != order_item.id) {
-                            datalist1!!.add(order_item)
-                        }
-                    }
-                    setData(datalist1)
-                }
+                order_Accept_Expired(order)
             })
             holder.bt_expired.setOnClickListener(View.OnClickListener {
-                val timer_val = map_countertimer!!.get(order.id)
-                if (timer_val != null) {
-                    timer_val!!.cancel()
-                }
-                map_accept_expired!!.put(order.id, true)
-                val result_map_accept_expired = map_accept_expired!!.get(order.id)
-                if (result_map_accept_expired != null && result_map_accept_expired) {
-                    var datalist1: MutableList<Orders> = ArrayList<Orders>()
-                    for (order_item in dataList) {
-                        if (order.id != order_item.id) {
-                            datalist1!!.add(order_item)
-                        }
-                    }
-                    setData(datalist1)
-                }
+                order_Accept_Expired(order)
             })
 
             val diff_time = get_diff_curr_expired(order.expired_at)
@@ -122,13 +91,7 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
                         }
 
                         override fun onFinish() {
-                            if (holder.bt_accept.isVisible) {
-                                holder.bt_expired.visibility = View.VISIBLE
-                                holder.bt_accept.visibility = View.GONE
-                                holder.iv_notify.visibility = View.GONE
-                                showProgress(0,0,holder)
-                                holder.tv_order_expired.text=""
-                            }
+                            setExpiredButton(holder)
                         }
                     }
                     timer.start()
@@ -142,37 +105,20 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
             } else {
 
                 if (map_accept_expired!!.get(order.id) == null) {
-                    if (!holder.bt_expired.isVisible) {
-                        holder.bt_expired.visibility = View.VISIBLE
-                        holder.bt_accept.visibility = View.GONE
-                        showProgress(0,0,holder)
-                    }
+                    setExpiredButton(holder)
+                }
+            }
+
+
+            holder.itemView.setOnClickListener {
+                if (listener != null) {
+                    listener!!.onItemClick(order, map_countertimer)
                 }
             }
         }
     }
 
-    @ExperimentalTime
-    private fun checkAlertExpired(holder: OrderAdapter.ViewHolder, order: Orders, millisUntilFinished:Long) {
 
-            if (is_in_alert_zone(order.alerted_at)) {
-                val handler = Handler(Looper.getMainLooper())
-                handler.postDelayed({
-                    if(!holder.iv_notify.isVisible) {
-                        holder.iv_notify.visibility = View.VISIBLE
-                        OConstants.playTone()
-                    }
-
-
-                }, 0)
-
-            }
-
-        val long_mins = OConstants.getMins(millisUntilFinished)
-        val long_secs = OConstants.getSecs(millisUntilFinished)
-        holder.tv_order_expired.text = "" + String.format("%d min, %d sec",long_mins,long_secs)
-        showProgress(long_mins,long_secs,holder)
-    }
 
     fun setData(orderlist:List<Orders>){
         dataList = orderlist
@@ -229,6 +175,28 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
     }
 
     @ExperimentalTime
+    private fun checkAlertExpired(holder: OrderAdapter.ViewHolder, order: Orders, millisUntilFinished:Long) {
+
+        if (is_in_alert_zone(order.alerted_at)) {
+            val handler = Handler(Looper.getMainLooper())
+            handler.postDelayed({
+                if(!holder.iv_notify.isVisible) {
+                    holder.iv_notify.visibility = View.VISIBLE
+                    OConstants.playTone()
+                }
+
+
+            }, 0)
+
+        }
+
+        val long_mins = OConstants.getMins(millisUntilFinished)
+        val long_secs = OConstants.getSecs(millisUntilFinished)
+        holder.tv_order_expired.text = "" + String.format("%d min, %d sec",long_mins,long_secs)
+        showProgress(long_mins,long_secs,holder)
+    }
+
+    @ExperimentalTime
     fun get_diff_curr_expired(expired:String): Long? {
         if(expired!=null) {
             var diff_time = DateTimeUtils.getDateDiff(
@@ -274,11 +242,11 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
     fun is_in_alertZone_not_expired(alerted:String,expired:String,current:String):Boolean{
         if(alerted!=null && expired!=null) {
             var diff_time_alert = DateTimeUtils.getDateDiff(
-                DateTimeUtils.getUTCDate(DateTimeUtils.DEFAULT_FORMAT),
+                current,
                 alerted
             )
             var diff_time_expired = DateTimeUtils.getDateDiff(
-                DateTimeUtils.getUTCDate(DateTimeUtils.DEFAULT_FORMAT),
+                current,
                 expired
             )
             if(diff_time_alert>0){
@@ -335,4 +303,32 @@ class OrderAdapter(private var dataList: List<Orders>, private val listener: Lis
         }
     }
 
+    private fun order_Accept_Expired(order:Orders){
+        val timer_val = map_countertimer!!.get(order.id)
+        if (timer_val != null) {
+            timer_val!!.cancel()
+        }
+        resetMapTimer()
+        map_accept_expired!!.put(order.id, true)
+        val result_map_accept_expired = map_accept_expired!!.get(order.id)
+        if (result_map_accept_expired != null && result_map_accept_expired) {
+            var datalist1: MutableList<Orders> = ArrayList<Orders>()
+            for (order_item in dataList) {
+                if (order.id != order_item.id) {
+                    datalist1!!.add(order_item)
+                }
+            }
+            setData(datalist1)
+        }
+    }
+
+    private fun setExpiredButton(holder: OrderAdapter.ViewHolder){
+        if (!holder.bt_expired.isVisible) {
+            holder.bt_expired.visibility = View.VISIBLE
+            holder.bt_accept.visibility = View.GONE
+            holder.iv_notify.visibility = View.GONE
+            showProgress(0,0,holder)
+            holder.tv_order_expired.text=""
+        }
+    }
 }
